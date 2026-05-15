@@ -34,7 +34,15 @@ export default function PowerUserSettings() {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const sections = [
+  interface PowerItem {
+    icon: React.ReactNode;
+    label: string;
+    desc: string;
+    toggle?: string;
+    link?: string;
+  }
+
+  const sections: { title: string; items: PowerItem[] }[] = [
     {
       title: "Customization & Theming",
       items: [
