@@ -25,7 +25,17 @@ const CURRENT_USER_ID = "user_me_123";
 const TARGET_USER_ID = "user_aman_456";
 const CHAT_ID = "chat_demo_789";
 
-const MOCK_MESSAGES = [
+interface Message {
+  id: string | number;
+  text?: string;
+  sender: string;
+  time: string;
+  status: string;
+  type?: string;
+  src?: string;
+}
+
+const MOCK_MESSAGES: Message[] = [
   { id: 1, text: "Hey! Did you see the new design for Sky Verse?", sender: "other", time: "10:15 AM", status: "read" },
   { id: 2, text: "Yes, it looks absolutely stunning! 🚀", sender: "me", time: "10:16 AM", status: "read" },
   { id: 3, text: "The glassmorphism and the premium animations are next level.", sender: "other", time: "10:17 AM", status: "read" },
@@ -35,7 +45,7 @@ const MOCK_MESSAGES = [
 ];
 
 export default function ChatScreen() {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
   const [inputValue, setInputValue] = useState("");
   const [isOnline, setIsOnline] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
