@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket";
+import { useCall } from "@/context/CallContext";
 
 // Mock user for demo purposes
 const CURRENT_USER_ID = "user_me_123";
@@ -40,6 +41,8 @@ export default function ChatScreen() {
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const { initiateCall } = useCall();
 
   useEffect(() => {
     const socket = getSocket(CURRENT_USER_ID);
@@ -162,10 +165,16 @@ export default function ChatScreen() {
         </div>
 
         <div className="flex items-center gap-1">
-          <button className="p-2 text-foreground/60 hover:text-primary transition-colors">
+          <button 
+            onClick={() => initiateCall([TARGET_USER_ID], 'VIDEO', CHAT_ID)}
+            className="p-2 text-foreground/60 hover:text-primary transition-colors"
+          >
             <Video className="w-5 h-5" />
           </button>
-          <button className="p-2 text-foreground/60 hover:text-primary transition-colors">
+          <button 
+            onClick={() => initiateCall([TARGET_USER_ID], 'VOICE', CHAT_ID)}
+            className="p-2 text-foreground/60 hover:text-primary transition-colors"
+          >
             <Phone className="w-5 h-5" />
           </button>
           <button className="p-2 text-foreground/60 hover:text-primary transition-colors">

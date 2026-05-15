@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   keywords: ["messaging", "business crm", "secure chat", "sky verse", "premium app"],
 };
 
+import { ClientProviders } from "@/components/providers/ClientProviders";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark h-full">
       <body className={`${inter.variable} ${outfit.variable} font-sans antialiased min-h-full flex flex-col`}>
-        {children}
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

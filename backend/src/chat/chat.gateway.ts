@@ -187,4 +187,36 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   handleBroadcastStatusUpdate(@MessageBody() data: { listId: string; messageId: string; status: string }) {
     this.server.emit('broadcast_status_update', data);
   }
+
+  // ---------------------------------------------------------
+  // Business & CRM Events (Step 5)
+  // ---------------------------------------------------------
+
+  @SubscribeMessage('lead_created')
+  handleLeadCreated(@MessageBody() data: { businessId: string; lead: any }) {
+    this.server.to(`business_${data.businessId}`).emit('lead_created', data.lead);
+  }
+
+  @SubscribeMessage('agent_assigned')
+  handleAgentAssigned(@MessageBody() data: { chatId: string; agentId: string }) {
+    this.server.to(data.chatId).emit('agent_assigned', data);
+    this.server.to(data.agentId).emit('new_chat_assigned', data);
+  }
+
+  @SubscribeMessage('chat_transferred')
+  handleChatTransferred(@MessageBody() data: { chatId: string; fromAgentId: string; toAgentId: string }) {
+    this.server.to(data.chatId).emit('chat_transferred', data);
+    this.server.to(data.toAgentId).emit('new_chat_assigned', data);
+  }
+
+  @SubscribeMessage('internal_note_added')
+  handleInternalNoteAdded(@MessageBody() data: { chatId: string; note: any }) {
+    // Only agents should see this
+    this.server.to(`agents_${data.chatId}`).emit('internal_note_added', data.note);
+  }
+
+  @SubscribeMessage('product_inquiry_created')
+  handleProductInquiryCreated(@MessageBody() data: { businessId: string; inquiry: any }) {
+    this.server.to(`business_${data.businessId}`).emit('product_inquiry_created', data.inquiry);
+  }
 }

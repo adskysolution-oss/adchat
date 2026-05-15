@@ -1,186 +1,196 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { 
-  ArrowLeft, 
-  Search, 
   Plus, 
+  Send, 
+  Search, 
   MoreVertical, 
-  Megaphone,
-  BarChart2,
+  CheckCircle2, 
+  Clock, 
+  AlertCircle,
+  TrendingUp,
   Users,
-  Send,
-  CalendarClock,
-  CheckCircle2,
-  AlertCircle
+  Eye,
+  MessageCircle,
+  Filter
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
-export default function BusinessCampaignsPage() {
+export default function CampaignsPage() {
+  const [activeTab, setActiveTab] = useState("all");
+
   const campaigns = [
-    {
-      id: "C001",
-      name: "Summer Sale Announcement",
-      status: "active",
-      sent: 1250,
-      delivered: 1245,
-      read: 980,
-      replied: 145,
-      date: "Today, 09:00 AM"
-    },
-    {
-      id: "C002",
-      name: "New API Feature Update",
-      status: "scheduled",
-      sent: 0,
-      delivered: 0,
-      read: 0,
-      replied: 0,
-      date: "Tomorrow, 10:00 AM"
-    },
-    {
-      id: "C003",
-      name: "Premium Plan Discount",
-      status: "completed",
-      sent: 5000,
-      delivered: 4980,
-      read: 3200,
-      replied: 450,
-      date: "May 10, 2026"
-    }
+    { id: 1, name: "Summer Mega Sale", type: "IMAGE", status: "RUNNING", reach: 4500, read: 3200, replies: 120, date: "Today" },
+    { id: 2, name: "New Arrival Blast", type: "VIDEO", status: "SCHEDULED", reach: 0, read: 0, replies: 0, date: "Tomorrow, 10:00 AM" },
+    { id: 3, name: "Product Catalog Update", type: "PRODUCT", status: "COMPLETED", reach: 12400, read: 9800, replies: 450, date: "2 days ago" },
+    { id: 4, name: "Flash Offer - Weekend", type: "TEXT", status: "FAILED", reach: 120, read: 50, replies: 5, date: "3 days ago" },
+    { id: 5, name: "Customer Reactivation", type: "OFFER", status: "PAUSED", reach: 800, read: 400, replies: 20, date: "1 week ago" },
   ];
 
-  const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'active':
-        return <span className="px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold rounded-full border border-green-200 dark:border-green-800 flex items-center"><span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>Active</span>;
-      case 'scheduled':
-        return <span className="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-bold rounded-full border border-blue-200 dark:border-blue-800 flex items-center"><CalendarClock className="w-3 h-3 mr-1" />Scheduled</span>;
-      case 'completed':
-        return <span className="px-2 py-0.5 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 text-xs font-bold rounded-full border border-slate-200 dark:border-slate-700 flex items-center"><CheckCircle2 className="w-3 h-3 mr-1" />Completed</span>;
-      default:
-        return null;
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "RUNNING": return "bg-green-500/10 text-green-500 border-green-500/20";
+      case "SCHEDULED": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+      case "COMPLETED": return "bg-indigo-500/10 text-indigo-500 border-indigo-500/20";
+      case "FAILED": return "bg-red-500/10 text-red-500 border-red-500/20";
+      case "PAUSED": return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+      default: return "bg-slate-500/10 text-slate-500 border-slate-500/20";
     }
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
-      {/* Sidebar for Desktop / Full width for Mobile */}
-      <div className="w-full md:w-[500px] flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        
-        {/* Header */}
-        <header className="px-4 py-4 flex flex-col gap-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Link href="/business" className="mr-3">
-                <ArrowLeft className="w-6 h-6 text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors" />
-              </Link>
-              <h1 className="text-xl font-bold flex items-center">
-                <Megaphone className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
-                Campaigns
-              </h1>
-            </div>
-            <button className="hidden md:flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm shadow-indigo-600/20 transition-all">
-              <Plus className="w-4 h-4 mr-2" /> New Campaign
-            </button>
-          </div>
-        </header>
+    <div className="flex-1 flex flex-col bg-[#f8fafc] dark:bg-[#0f172a] overflow-hidden">
+      <header className="h-20 bg-white dark:bg-slate-900 border-b border-border dark:border-border-dark flex items-center justify-between px-8">
+        <div>
+          <h1 className="text-2xl font-bold">Campaign Manager</h1>
+          <p className="text-sm text-foreground/40 font-medium">Broadcast messages and track performance</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link 
+            href="/business/campaigns/templates" 
+            className="h-11 px-6 rounded-xl border border-border dark:border-border-dark font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-2"
+          >
+            Manage Templates
+          </Link>
+          <Link 
+            href="/business/campaigns/new" 
+            className="h-11 px-6 premium-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Create Campaign
+          </Link>
+        </div>
+      </header>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Messages Sent</p>
-              <Send className="w-4 h-4 text-indigo-500" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-white">6,250</h3>
-            <p className="text-[10px] text-green-500 font-medium mt-1">+12% this week</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Avg Read Rate</p>
-              <BarChart2 className="w-4 h-4 text-indigo-500" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-white">78.5%</h3>
-            <p className="text-[10px] text-green-500 font-medium mt-1">+2.4% this week</p>
-          </div>
+      <main className="flex-1 overflow-y-auto p-8 space-y-8 no-scrollbar">
+        {/* Analytics Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <StatCard icon={<Send className="w-5 h-5" />} label="Total Sent" value="128.4k" change="+12%" color="primary" />
+          <StatCard icon={<Eye className="w-5 h-5" />} label="Avg. Read Rate" value="76.4%" change="+5.2%" color="secondary" />
+          <StatCard icon={<MessageCircle className="w-5 h-5" />} label="Reply Rate" value="4.8%" change="+2.1%" color="accent" />
+          <StatCard icon={<Users className="w-5 h-5" />} label="Opt-outs" value="0.2%" change="-15%" color="red" />
         </div>
 
-        {/* Campaigns List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20 md:pb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Recent Campaigns
-            </h2>
-            <Search className="w-5 h-5 text-slate-400 cursor-pointer hover:text-indigo-500 transition-colors" />
+        {/* Campaign List */}
+        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-border dark:border-border-dark shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border dark:border-border-dark flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl w-fit">
+              {["All", "Running", "Scheduled", "Completed"].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab.toLowerCase())}
+                  className={cn(
+                    "px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
+                    activeTab === tab.toLowerCase() ? "bg-white dark:bg-slate-700 shadow-sm text-primary" : "text-foreground/40 hover:text-foreground/60"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            <div className="relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40 group-focus-within:text-primary transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search campaigns..." 
+                className="h-11 bg-slate-50 dark:bg-slate-800 border-border dark:border-border-dark border rounded-xl pl-12 pr-4 outline-none text-sm w-full md:w-64"
+              />
+            </div>
           </div>
 
-          {campaigns.map((campaign) => (
-            <div 
-              key={campaign.id} 
-              className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer group"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors mb-1">{campaign.name}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center">
-                    <CalendarClock className="w-3.5 h-3.5 mr-1" /> {campaign.date}
-                  </p>
-                </div>
-                {getStatusBadge(campaign.status)}
-              </div>
-              
-              <div className="grid grid-cols-4 gap-2 mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium uppercase">Sent</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">{campaign.sent.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium uppercase">Delivered</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">{campaign.delivered.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium uppercase">Read</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">{campaign.read.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium uppercase">Replied</span>
-                  <span className="font-semibold text-indigo-600 dark:text-indigo-400 text-sm">{campaign.replied.toLocaleString()}</span>
-                </div>
-              </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border dark:border-border-dark text-left bg-slate-50/50 dark:bg-slate-800/30">
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-foreground/40">Campaign Name</th>
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-foreground/40">Status</th>
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-foreground/40">Reach</th>
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-foreground/40">Read Rate</th>
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-foreground/40">Replies</th>
+                  <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-foreground/40">Date</th>
+                  <th className="px-8 py-4"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50 dark:divide-border-dark/50">
+                {campaigns.map((camp) => (
+                  <tr key={camp.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary">
+                          {camp.type === "IMAGE" ? <Send className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm">{camp.name}</p>
+                          <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-widest">{camp.type}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <span className={cn(
+                        "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
+                        getStatusColor(camp.status)
+                      )}>
+                        {camp.status}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 font-bold text-sm">
+                      {camp.reach.toLocaleString()}
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm">{camp.reach > 0 ? Math.round((camp.read / camp.reach) * 100) : 0}%</span>
+                        <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                           <div 
+                            className="h-full bg-primary" 
+                            style={{ width: `${camp.reach > 0 ? (camp.read / camp.reach) * 100 : 0}%` }} 
+                           />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5 font-bold text-sm">
+                      {camp.replies}
+                    </td>
+                    <td className="px-8 py-5 text-sm text-foreground/40 font-medium">
+                      {camp.date}
+                    </td>
+                    <td className="px-8 py-5">
+                      <button className="p-2 text-foreground/40 hover:text-foreground transition-colors opacity-0 group-hover:opacity-100">
+                        <MoreVertical className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
 
-              {campaign.status === "active" && (
-                <div className="mt-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div className="bg-indigo-600 h-1.5 rounded-full" style={{ width: '78%' }}></div>
-                </div>
-              )}
-            </div>
-          ))}
+function StatCard({ icon, label, value, change, color }: any) {
+  return (
+    <div className="p-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-border dark:border-border-dark shadow-sm group">
+      <div className="flex justify-between items-start mb-4">
+        <div className={cn(
+          "p-3 rounded-2xl group-hover:scale-110 transition-transform",
+          color === "primary" ? "bg-primary/10 text-primary" :
+          color === "secondary" ? "bg-secondary/10 text-secondary" :
+          color === "accent" ? "bg-accent/10 text-accent" : "bg-red-500/10 text-red-500"
+        )}>
+          {icon}
         </div>
-        
-        {/* Mobile FAB */}
-        <div className="md:hidden absolute bottom-6 right-6">
-          <button className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-transform active:scale-95">
-            <Plus className="w-6 h-6" />
-          </button>
-        </div>
+        <span className={cn(
+          "text-[10px] font-bold px-2 py-1 rounded-lg bg-green-500/10 text-green-500"
+        )}>
+          {change}
+        </span>
       </div>
-
-      {/* Desktop Detail View (Empty State / Mock) */}
-      <div className="hidden md:flex flex-1 flex-col bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-hidden relative">
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-100 dark:border-slate-700 flex items-center justify-center mb-6 text-slate-300 dark:text-slate-600">
-            <Megaphone className="w-10 h-10" />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Broadcast Messaging</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-center max-w-sm mb-8">
-            Create rich, engaging broadcast campaigns to reach thousands of customers instantly. Track delivery and read receipts in real-time.
-          </p>
-          <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center">
-            <Plus className="w-5 h-5 mr-2" /> Start New Campaign
-          </button>
-        </div>
-      </div>
+      <p className="text-sm font-medium text-foreground/50 mb-1">{label}</p>
+      <h4 className="text-2xl font-bold text-foreground">{value}</h4>
     </div>
   );
 }

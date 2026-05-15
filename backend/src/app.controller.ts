@@ -1,12 +1,22 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { PrismaService } from './prisma/prisma.service';
 
-@Controller()
-export class AppController {
-  constructor(private readonly appService: AppService) {}
+@Controller('health')
+export class HealthController {
+  constructor(private prisma: PrismaService) {}
 
   @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  async check() {
+    // Check DB
+    const db = await this.prisma.$queryRaw`SELECT 1`.then(() => 'UP').catch(() => 'DOWN');
+    
+    return {
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: db,
+        server: 'UP',
+      },
+    };
   }
 }

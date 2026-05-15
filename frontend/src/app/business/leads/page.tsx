@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ArrowLeft, 
@@ -15,60 +15,90 @@ import {
   ArrowRight,
   User,
   Phone,
-  Mail
+  Mail,
+  Calendar,
+  Tag,
+  History,
+  FileText,
+  ChevronRight
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Types
-type LeadStatus = "new" | "contacted" | "qualified" | "converted";
-
-interface Lead {
-  id: string;
-  name: string;
-  company: string;
-  source: string;
-  status: LeadStatus;
-  date: string;
-  value: string;
-  avatar: string;
-}
+type LeadStatus = "NEW" | "CONTACTED" | "INTERESTED" | "FOLLOW_UP" | "QUALIFIED" | "CONVERTED" | "LOST" | "REJECTED";
 
 export default function BusinessLeadsPage() {
-  const [activeTab, setActiveTab] = useState<LeadStatus | "all">("all");
+  const [leads, setLeads] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<LeadStatus | "ALL">("ALL");
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [leadHistory, setLeadHistory] = useState<any[]>([]);
 
-  const leads: Lead[] = [
-    { id: "L001", name: "Sarah Connor", company: "Cyberdyne Sys", source: "Website", status: "new", date: "Today", value: "$5,000", avatar: "https://i.pravatar.cc/150?u=sarah" },
-    { id: "L002", name: "John Smith", company: "Matrix Inc", source: "Referral", status: "contacted", date: "Yesterday", value: "$1,200", avatar: "https://i.pravatar.cc/150?u=john" },
-    { id: "L003", name: "Bruce Wayne", company: "Wayne Ent", source: "Campaign", status: "qualified", date: "2 days ago", value: "$15,000", avatar: "https://i.pravatar.cc/150?u=bruce" },
-    { id: "L004", name: "Clark Kent", company: "Daily Planet", source: "Organic", status: "converted", date: "Last week", value: "$800", avatar: "https://i.pravatar.cc/150?u=clark" },
-    { id: "L005", name: "Diana Prince", company: "Themyscira LLC", source: "Website", status: "new", date: "Today", value: "$3,400", avatar: "https://i.pravatar.cc/150?u=diana" },
-    { id: "L006", name: "Tony Stark", company: "Stark Ind", source: "Campaign", status: "qualified", date: "Yesterday", value: "$25,000", avatar: "https://i.pravatar.cc/150?u=tony" },
-  ];
+  useEffect(() => {
+    fetchLeads();
+  }, [activeTab]);
 
-  const filteredLeads = activeTab === "all" ? leads : leads.filter(l => l.status === activeTab);
+  const fetchLeads = async () => {
+    setLoading(true);
+    try {
+      const businessId = 'demo-business-id'; // Placeholder
+      const statusParam = activeTab !== "ALL" ? `?status=${activeTab}` : '';
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/crm/leads/${businessId}${statusParam}`);
+      const data = await res.json();
+      setLeads(data);
+    } catch (error) {
+      console.error("Failed to fetch leads", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLeadDetails = async (leadId: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/crm/leads/${leadId}/history`);
+      const data = await res.json();
+      setSelectedLead(data);
+      setLeadHistory(data.timeline || []);
+    } catch (error) {
+      console.error("Failed to fetch lead details", error);
+    }
+  };
+
+  const updateLeadStatus = async (leadId: string, newStatus: LeadStatus) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/crm/leads/${leadId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        fetchLeads();
+        if (selectedLead?.id === leadId) fetchLeadDetails(leadId);
+      }
+    } catch (error) {
+      console.error("Failed to update status", error);
+    }
+  };
 
   const getStatusColor = (status: LeadStatus) => {
     switch (status) {
-      case "new": return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800";
-      case "contacted": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800";
-      case "qualified": return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800";
-      case "converted": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800";
+      case "NEW": return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800";
+      case "CONTACTED": return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800";
+      case "QUALIFIED": return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800";
+      case "CONVERTED": return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800";
+      case "LOST":
+      case "REJECTED": return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800";
       default: return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700";
     }
   };
 
-  const getStatusIcon = (status: LeadStatus) => {
-    switch (status) {
-      case "new": return <UserPlus className="w-3.5 h-3.5 mr-1" />;
-      case "contacted": return <MessageSquare className="w-3.5 h-3.5 mr-1" />;
-      case "qualified": return <Clock className="w-3.5 h-3.5 mr-1" />;
-      case "converted": return <CheckCircle2 className="w-3.5 h-3.5 mr-1" />;
-    }
-  };
-
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
       {/* Sidebar / List View */}
-      <div className="w-full md:w-[450px] lg:w-[500px] flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+      <div className={cn(
+        "w-full md:w-[450px] lg:w-[500px] flex flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 transition-all",
+        selectedLead && "hidden lg:flex"
+      )}>
         
         {/* Header */}
         <header className="px-4 py-4 flex flex-col gap-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10">
@@ -77,134 +107,200 @@ export default function BusinessLeadsPage() {
               <Link href="/business" className="mr-3">
                 <ArrowLeft className="w-6 h-6 text-slate-600 dark:text-slate-400 hover:text-indigo-600 transition-colors" />
               </Link>
-              <h1 className="text-xl font-bold flex items-center">
-                Lead Pipeline
-              </h1>
+              <h1 className="text-xl font-bold">Lead Pipeline</h1>
             </div>
-            <div className="flex items-center space-x-2">
-              <button className="p-2 text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                <Filter className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors md:hidden">
-                <MoreVertical className="w-5 h-5" />
-              </button>
-              <button className="hidden md:flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
-                <Plus className="w-4 h-4 mr-1" /> Add Lead
-              </button>
-            </div>
+            <button className="flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+              <Plus className="w-4 h-4 mr-1" /> Add
+            </button>
           </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search leads, companies..." 
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm outline-none transition-shadow"
-            />
-          </div>
-
-          {/* Pipeline Stages Tabs */}
           <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-1">
-            {["all", "new", "contacted", "qualified", "converted"].map((tab) => (
+            {["ALL", "NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
-                className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all ${
+                className={cn(
+                  "flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold capitalize transition-all border",
                   activeTab === tab 
-                    ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900 shadow-sm" 
-                    : "bg-white text-slate-600 border border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-md" 
+                    : "bg-white text-slate-600 border-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-50"
+                )}
               >
-                {tab} {tab !== "all" && `(${leads.filter(l => l.status === tab).length})`}
+                {tab.toLowerCase()}
               </button>
             ))}
           </div>
         </header>
 
         {/* Leads List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-20 md:pb-4">
-          {filteredLeads.map((lead) => (
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          {loading ? (
+            <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div></div>
+          ) : leads.map((lead) => (
             <div 
               key={lead.id} 
-              className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-all cursor-pointer group"
+              onClick={() => fetchLeadDetails(lead.id)}
+              className={cn(
+                "p-4 rounded-2xl border transition-all cursor-pointer group",
+                selectedLead?.id === lead.id 
+                  ? "bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-300 dark:border-indigo-700" 
+                  : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-indigo-200"
+              )}
             >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center">
-                  <img src={lead.avatar} alt={lead.name} className="w-10 h-10 rounded-full object-cover mr-3 border border-slate-200 dark:border-slate-700" />
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-sm group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{lead.name}</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">{lead.company}</p>
-                  </div>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">{lead.name}</h3>
+                  <p className="text-xs text-slate-500">{lead.company || lead.phoneNumber}</p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border flex items-center ${getStatusColor(lead.status)}`}>
-                  {getStatusIcon(lead.status)}
+                <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-bold uppercase", getStatusColor(lead.status))}>
                   {lead.status}
                 </span>
               </div>
-              
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex space-x-4 text-xs">
-                  <div className="flex flex-col">
-                    <span className="text-slate-400 mb-0.5">Value</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">{lead.value}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-slate-400 mb-0.5">Source</span>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">{lead.source}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-400 font-medium">{lead.date}</p>
+              <div className="flex items-center justify-between mt-3 text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                <span>Value: ${lead.value || 0}</span>
+                <span>{new Date(lead.createdAt).toLocaleDateString()}</span>
               </div>
             </div>
           ))}
-          
-          {filteredLeads.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                <UserPlus className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-1">No leads found</h3>
-              <p className="text-xs text-slate-500 max-w-[200px]">There are no leads matching the current filter criteria.</p>
-            </div>
-          )}
-        </div>
-        
-        {/* Mobile FAB */}
-        <div className="md:hidden absolute bottom-6 right-6">
-          <button className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/30 transition-transform active:scale-95">
-            <Plus className="w-6 h-6" />
-          </button>
         </div>
       </div>
 
-      {/* Desktop Lead Detail View (Empty State / Mock) */}
-      <div className="hidden md:flex flex-1 flex-col bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-hidden relative">
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-100 dark:border-slate-700 flex items-center justify-center mb-6 text-slate-300 dark:text-slate-600">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      {/* Lead Detail View */}
+      <div className={cn(
+        "flex-1 flex flex-col bg-white dark:bg-slate-950 overflow-hidden",
+        !selectedLead && "hidden md:flex"
+      )}>
+        {!selectedLead ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-20 h-20 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
+              <User className="w-10 h-10 text-slate-300" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Select a lead to view details</h2>
+            <p className="text-slate-500 max-w-xs">Full history and communication tools will appear here.</p>
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Select a Lead</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-center max-w-sm mb-6">
-            Click on a lead from the list to view full details, activity history, and communication options.
-          </p>
-          <div className="flex space-x-3">
-             <button className="px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg transition-colors flex items-center shadow-sm">
-              <Download className="w-4 h-4 mr-2" /> Export
-            </button>
-            <button className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-md shadow-indigo-600/20 transition-all flex items-center">
-              <Plus className="w-4 h-4 mr-2" /> Create Lead
-            </button>
-          </div>
-        </div>
+        ) : (
+          <>
+            <header className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-950">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setSelectedLead(null)} className="lg:hidden">
+                  <ArrowLeft className="w-6 h-6" />
+                </button>
+                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xl">
+                  {selectedLead.name[0]}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">{selectedLead.name}</h2>
+                  <p className="text-sm text-slate-500">{selectedLead.company || 'Private Lead'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><Phone className="w-5 h-5 text-green-600" /></button>
+                <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><Mail className="w-5 h-5 text-indigo-600" /></button>
+                <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"><MessageSquare className="w-5 h-5 text-blue-600" /></button>
+              </div>
+            </header>
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 grid grid-cols-1 xl:grid-cols-3 gap-6">
+                {/* Info Card */}
+                <div className="xl:col-span-2 space-y-6">
+                  <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Lead Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Status</label>
+                        <select 
+                          value={selectedLead.status}
+                          onChange={(e) => updateLeadStatus(selectedLead.id, e.target.value as LeadStatus)}
+                          className="mt-1 block w-full bg-transparent border-none p-0 font-bold text-indigo-600 focus:ring-0 cursor-pointer"
+                        >
+                          {["NEW", "CONTACTED", "QUALIFIED", "CONVERTED", "LOST", "REJECTED"].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Value</label>
+                        <p className="mt-1 font-bold text-lg">${selectedLead.value || 0}</p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Source</label>
+                        <p className="mt-1 font-medium">{selectedLead.source}</p>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Requirement</label>
+                        <p className="mt-1 font-medium">{selectedLead.requirement || 'Not specified'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                      <h3 className="font-bold flex items-center gap-2 text-sm">
+                        <History className="w-4 h-4" /> Activity History
+                      </h3>
+                    </div>
+                    <div className="p-4 space-y-6 relative before:content-[''] before:absolute before:left-7 before:top-8 before:bottom-8 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800">
+                      {leadHistory.map((item, i) => (
+                        <div key={item.id} className="flex gap-4 relative">
+                          <div className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10",
+                            item.action === 'CREATED' ? "bg-green-500" : "bg-indigo-500"
+                          )}>
+                            <div className="w-2 h-2 bg-white rounded-full" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{item.action}</p>
+                            <p className="text-xs text-slate-500">{item.details}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">{new Date(item.createdAt).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar Card */}
+                <div className="space-y-6">
+                  <div className="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg shadow-indigo-600/20">
+                    <h3 className="text-xs font-bold uppercase mb-4 opacity-80">Next Follow-up</h3>
+                    {selectedLead.followUpDate ? (
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-8 h-8" />
+                        <div>
+                          <p className="text-xl font-bold">{new Date(selectedLead.followUpDate).toLocaleDateString()}</p>
+                          <p className="text-xs opacity-70">10:00 AM</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <button className="w-full py-3 bg-white/20 hover:bg-white/30 rounded-xl font-bold text-sm transition-colors">
+                        Set Reminder
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
+                    <h3 className="text-xs font-bold uppercase mb-4 text-slate-400">Assigned Agent</h3>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                      <div className="w-8 h-8 rounded-full bg-slate-300 flex items-center justify-center text-xs font-bold">
+                        {selectedLead.assignedTo?.firstName?.[0] || '?'}
+                      </div>
+                      <p className="text-sm font-bold">
+                        {selectedLead.assignedTo ? `${selectedLead.assignedTo.firstName} ${selectedLead.assignedTo.lastName}` : 'Unassigned'}
+                      </p>
+                    </div>
+                    <button className="w-full mt-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors">
+                      Change Agent
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
-  );
-}
-
-// Icon Component
-function Download(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
   );
 }

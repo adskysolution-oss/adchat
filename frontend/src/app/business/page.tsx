@@ -1,6 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -15,7 +17,9 @@ import {
   TrendingUp,
   Clock,
   MoreHorizontal,
-  Plus
+  Plus,
+  Zap,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +31,8 @@ const STATS = [
 ];
 
 export default function BusinessDashboard() {
+  const pathname = usePathname();
+
   return (
     <div className="flex h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
       {/* Desktop Sidebar */}
@@ -40,18 +46,20 @@ export default function BusinessDashboard() {
           </div>
 
           <nav className="space-y-1.5">
-            <SidebarItem icon={<LayoutDashboard />} label="Dashboard" active />
-            <SidebarItem icon={<MessageSquareText />} label="Inbox" badge={5} />
-            <SidebarItem icon={<Users />} label="Leads / CRM" />
-            <SidebarItem icon={<ShoppingBag />} label="Catalog" />
-            <SidebarItem icon={<Send />} label="Campaigns" />
-            <SidebarItem icon={<BarChart3 />} label="Reports" />
+            <SidebarItem icon={<LayoutDashboard />} label="Dashboard" href="/business" active={pathname === '/business'} />
+            <SidebarItem icon={<MessageSquareText />} label="Inbox" href="/business/chat" badge={5} active={pathname === '/business/chat'} />
+            <SidebarItem icon={<Users />} label="Leads / CRM" href="/business/leads" active={pathname === '/business/leads'} />
+            <SidebarItem icon={<ShoppingBag />} label="Catalog" href="/business/products" active={pathname === '/business/products'} />
+            <SidebarItem icon={<Send />} label="Campaigns" href="/business/campaigns" active={pathname === '/business/campaigns'} />
+            <SidebarItem icon={<Zap />} label="Automation" href="/business/automation" active={pathname === '/business/automation'} />
+            <SidebarItem icon={<Bot />} label="Chatbot" href="/business/chatbot" active={pathname === '/business/chatbot'} />
+            <SidebarItem icon={<BarChart3 />} label="Reports" href="/business/reports" active={pathname === '/business/reports'} />
           </nav>
         </div>
 
         <div className="mt-auto p-8 border-t border-border dark:border-border-dark">
           <nav className="space-y-1.5">
-            <SidebarItem icon={<Settings />} label="Settings" />
+            <SidebarItem icon={<Settings />} label="Settings" href="/business/settings" active={pathname === '/business/settings'} />
             <div className="flex items-center gap-3 p-3 mt-4 bg-slate-100 dark:bg-slate-800 rounded-2xl">
               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Biz" className="w-10 h-10 rounded-xl bg-white" />
               <div className="flex-1 min-w-0">
@@ -83,9 +91,9 @@ export default function BusinessDashboard() {
               <Bell className="w-5 h-5 text-foreground/60" />
               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800" />
             </button>
-            <button className="hidden sm:flex items-center gap-2 h-11 px-5 premium-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
+            <Link href="/business/campaigns/new" className="hidden sm:flex items-center gap-2 h-11 px-5 premium-gradient text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
               <Plus className="w-4 h-4" /> New Campaign
-            </button>
+            </Link>
           </div>
         </header>
 
@@ -143,7 +151,7 @@ export default function BusinessDashboard() {
             <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-border dark:border-border-dark shadow-sm overflow-hidden">
               <div className="p-6 border-b border-border dark:border-border-dark flex justify-between items-center">
                 <h3 className="font-bold text-lg">Recent Leads & Inquiries</h3>
-                <button className="text-primary text-xs font-bold hover:underline">View All</button>
+                <Link href="/business/leads" className="text-primary text-xs font-bold hover:underline">View All</Link>
               </div>
               <div className="divide-y divide-border/50 dark:divide-border-dark/50">
                 {[1, 2, 3, 4, 5].map((item) => (
@@ -162,9 +170,9 @@ export default function BusinessDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="p-2 text-foreground/40 hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
+                      <Link href="/business/chat" className="p-2 text-foreground/40 hover:text-primary transition-colors opacity-0 group-hover:opacity-100">
                         <MessageSquareText className="w-4 h-4" />
-                      </button>
+                      </Link>
                       <button className="p-2 text-foreground/40 hover:text-foreground/80 transition-colors">
                         <MoreHorizontal className="w-4 h-4" />
                       </button>
@@ -214,9 +222,9 @@ export default function BusinessDashboard() {
                   </div>
                 ))}
               </div>
-              <button className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-foreground/60 text-xs font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+              <Link href="/business/campaigns" className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-foreground/60 text-xs font-bold rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-center block">
                 View All Campaigns
-              </button>
+              </Link>
             </div>
           </div>
         </div>
@@ -225,14 +233,17 @@ export default function BusinessDashboard() {
   );
 }
 
-function SidebarItem({ icon, label, active = false, badge }: { icon: React.ReactNode, label: string, active?: boolean, badge?: number }) {
+function SidebarItem({ icon, label, href = "#", active = false, badge }: { icon: React.ReactNode, label: string, href?: string, active?: boolean, badge?: number }) {
   return (
-    <button className={cn(
-      "w-full flex items-center justify-between p-3.5 rounded-2xl transition-all duration-300 group",
-      active 
-        ? "bg-primary text-white shadow-lg shadow-primary/30 scale-[1.02]" 
-        : "text-foreground/50 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
-    )}>
+    <Link 
+      href={href}
+      className={cn(
+        "w-full flex items-center justify-between p-3.5 rounded-2xl transition-all duration-300 group relative",
+        active 
+          ? "bg-primary text-white shadow-lg shadow-primary/30 scale-[1.02]" 
+          : "text-foreground/50 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800"
+      )}
+    >
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-5 h-5 transition-colors",
@@ -256,6 +267,6 @@ function SidebarItem({ icon, label, active = false, badge }: { icon: React.React
           className="w-1.5 h-6 bg-white rounded-full absolute -right-2" 
         />
       )}
-    </button>
+    </Link>
   );
 }

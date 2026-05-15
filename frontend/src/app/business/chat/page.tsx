@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   ArrowLeft, 
@@ -18,253 +18,252 @@ import {
   Clock,
   ChevronRight,
   PlusCircle,
-  FileText
+  FileText,
+  UserCheck,
+  UserPlus,
+  ShieldCheck,
+  BookOpen,
+  Zap,
+  Info
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function BusinessChatPage() {
   const [message, setMessage] = useState("");
+  const [isAgentAssigned, setIsAgentAssigned] = useState(false);
+  const [internalNotes, setInternalNotes] = useState<any[]>([]);
+  const [showNotes, setShowNotes] = useState(false);
+  const [activeTab, setActiveTab] = useState<'CHAT' | 'NOTES'>('CHAT');
 
   const messages = [
     { id: 1, text: "Hi, I'm interested in your premium plan.", sender: "customer", time: "10:30 AM" },
-    { id: 2, text: "Hello! Thank you for your interest. The premium plan includes advanced CRM features, bulk messaging, and API access.", sender: "business", time: "10:32 AM" },
-    { id: 3, text: "Can you send me the pricing details?", sender: "customer", time: "10:35 AM" },
-    { id: 4, text: "Certainly! I've attached our pricing brochure below.", sender: "business", time: "10:36 AM" },
+    { id: 2, text: "Hello! Thank you for your interest. The premium plan includes advanced CRM features.", sender: "business", time: "10:32 AM" },
   ];
+
+  const assignToMe = () => {
+    setIsAgentAssigned(true);
+    // In real app, emit 'agent_assigned' via socket
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900 font-sans overflow-hidden">
       
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-950/50 relative">
-        {/* Chat Header */}
+        
+        {/* Header */}
         <header className="px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center z-10 shadow-sm">
           <div className="flex items-center">
-            <Link href="/business" className="mr-3">
+            <Link href="/business" className="mr-3 lg:hidden">
               <ArrowLeft className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </Link>
-            <div className="flex items-center cursor-pointer">
-              <img
-                src="https://i.pravatar.cc/150?u=customer1"
-                alt="John Doe"
-                className="w-10 h-10 rounded-full object-cover mr-3"
-              />
-              <div>
-                <h2 className="font-semibold text-slate-900 dark:text-white flex items-center">
-                  John Doe
-                  <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500 text-[10px] font-bold rounded-full">
-                    Hot Lead
-                  </span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Online</p>
+            <div className="flex items-center">
+              <div className="relative">
+                <img src="https://i.pravatar.cc/150?u=customer1" alt="John" className="w-10 h-10 rounded-full border-2 border-green-500" />
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
               </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <button className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-              <Video className="w-5 h-5" />
-            </button>
-            <button className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-              <Phone className="w-5 h-5" />
-            </button>
-            <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-            <button className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors md:hidden">
-              <MoreVertical className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="text-center my-4">
-            <span className="px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs rounded-full shadow-sm">
-              Today
-            </span>
-          </div>
-
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.sender === "business" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                  msg.sender === "business"
-                    ? "bg-indigo-600 text-white rounded-tr-none"
-                    : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700"
-                }`}
-              >
-                <p className="text-[15px] leading-relaxed">{msg.text}</p>
-                <div
-                  className={`text-[10px] text-right mt-1 ${
-                    msg.sender === "business" ? "text-indigo-200" : "text-slate-400"
-                  }`}
-                >
-                  {msg.time}
+              <div className="ml-3">
+                <h2 className="font-bold text-sm">John Doe</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500">via Website</span>
+                  <span className="text-[10px] px-1.5 bg-yellow-100 text-yellow-700 rounded font-bold uppercase tracking-wider">Hot Lead</span>
                 </div>
               </div>
             </div>
-          ))}
-          
-          {/* Business Document attachment mock */}
-          <div className="flex justify-end">
-            <div className="max-w-[75%] px-4 py-3 rounded-2xl shadow-sm bg-indigo-600 text-white rounded-tr-none flex items-center space-x-3">
-              <div className="w-10 h-10 bg-indigo-500 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold truncate">Sky_Verse_Pricing_2026.pdf</p>
-                <p className="text-xs text-indigo-200">2.4 MB • PDF Document</p>
-              </div>
-              <button className="p-2 bg-indigo-500 rounded-full hover:bg-indigo-400 transition-colors">
-                <ArrowLeft className="w-4 h-4 rotate-180" />
-              </button>
-            </div>
           </div>
-        </div>
-
-        {/* Quick Replies Strip (Business specific) */}
-        <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex space-x-2 overflow-x-auto no-scrollbar">
-          <button className="flex-shrink-0 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600 transition-colors whitespace-nowrap">
-            /pricing
-          </button>
-          <button className="flex-shrink-0 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600 transition-colors whitespace-nowrap">
-            /greeting
-          </button>
-          <button className="flex-shrink-0 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600 transition-colors whitespace-nowrap">
-            /book_demo
-          </button>
-          <button className="flex-shrink-0 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-600 transition-colors whitespace-nowrap flex items-center">
-            <PlusCircle className="w-3 h-3 mr-1" /> New Quick Reply
-          </button>
-        </div>
-
-        {/* Input Area */}
-        <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
-          <div className="flex items-end bg-slate-100 dark:bg-slate-800 rounded-2xl px-2 py-1">
-            <button className="p-2 text-slate-500 hover:text-indigo-600 transition-colors mb-1">
-              <Smile className="w-6 h-6" />
-            </button>
-            <button className="p-2 text-slate-500 hover:text-indigo-600 transition-colors mb-1">
-              <Paperclip className="w-6 h-6" />
-            </button>
-            
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Type a message or use '/' for quick replies"
-              className="flex-1 bg-transparent border-none focus:ring-0 resize-none max-h-32 min-h-[44px] py-3 px-2 text-slate-900 dark:text-white"
-              rows={1}
-            />
-            
-            {message.trim() ? (
-              <button className="p-2 mb-1 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors shadow-md ml-2">
-                <Send className="w-5 h-5 ml-0.5" />
+          
+          <div className="flex items-center gap-3">
+            {!isAgentAssigned ? (
+              <button 
+                onClick={assignToMe}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-md transition-all flex items-center gap-2"
+              >
+                <UserPlus className="w-4 h-4" /> Assign to Me
               </button>
             ) : (
-              <button className="p-2 mb-1 text-slate-500 hover:text-indigo-600 transition-colors">
-                <Mic className="w-6 h-6" />
-              </button>
+              <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 rounded-lg text-[10px] font-bold uppercase">
+                <ShieldCheck className="w-3.5 h-3.5" /> Assigned to You
+              </div>
             )}
+            <button className="p-2 text-slate-400 hover:text-indigo-600"><MoreVertical className="w-5 h-5" /></button>
+          </div>
+        </header>
+
+        {/* Tabs for Agent */}
+        <div className="flex bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+          <button 
+            onClick={() => setActiveTab('CHAT')}
+            className={cn(
+              "flex-1 py-2.5 text-xs font-bold uppercase tracking-widest transition-all",
+              activeTab === 'CHAT' ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30" : "text-slate-400"
+            )}
+          >
+            Customer Chat
+          </button>
+          <button 
+            onClick={() => setActiveTab('NOTES')}
+            className={cn(
+              "flex-1 py-2.5 text-xs font-bold uppercase tracking-widest transition-all",
+              activeTab === 'NOTES' ? "text-amber-600 border-b-2 border-amber-600 bg-amber-50/30" : "text-slate-400"
+            )}
+          >
+            Internal Notes
+          </button>
+        </div>
+
+        {/* Chat / Notes Area */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {activeTab === 'CHAT' ? (
+            <>
+              {messages.map((msg) => (
+                <div key={msg.id} className={cn("flex", msg.sender === "business" ? "justify-end" : "justify-start")}>
+                  <div className={cn(
+                    "max-w-[70%] p-3 rounded-2xl shadow-sm text-sm",
+                    msg.sender === "business" 
+                      ? "bg-indigo-600 text-white rounded-tr-none" 
+                      : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 rounded-tl-none"
+                  )}>
+                    {msg.text}
+                    <p className="text-[10px] text-right mt-1 opacity-70">{msg.time}</p>
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900 p-3 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center text-white text-[10px] font-bold">JD</div>
+                  <span className="text-xs font-bold">Jason (Manager)</span>
+                  <span className="text-[10px] text-slate-400 ml-auto">10:45 AM</span>
+                </div>
+                <p className="text-xs text-amber-900 dark:text-amber-400">Customer is asking for a discount. Check if we can offer 10% off for the annual plan.</p>
+              </div>
+              <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">Only agents can see these notes</p>
+            </div>
+          )}
+        </div>
+
+        {/* Action Area */}
+        <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+          {!isAgentAssigned && activeTab === 'CHAT' ? (
+            <div className="absolute inset-x-0 bottom-0 top-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-[2px] flex items-center justify-center z-20">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 text-center max-w-xs">
+                <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <UserPlus className="w-8 h-8 text-indigo-600" />
+                </div>
+                <h3 className="font-bold text-lg mb-2">Unassigned Chat</h3>
+                <p className="text-sm text-slate-500 mb-6">You need to assign this chat to yourself to start replying to the customer.</p>
+                <button 
+                  onClick={assignToMe}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all"
+                >
+                  Assign to Me
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Quick Replies */}
+          {activeTab === 'CHAT' && (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-1">
+              {['/pricing', '/greeting', '/demo'].map(q => (
+                <button key={q} className="shrink-0 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-bold rounded-full hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                  {q}
+                </button>
+              ))}
+              <button className="shrink-0 px-3 py-1 border border-dashed border-slate-300 dark:border-slate-700 text-slate-400 text-xs font-bold rounded-full flex items-center gap-1">
+                <PlusCircle className="w-3.5 h-3.5" /> Manage
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl">
+            <button className="p-2 text-slate-400 hover:text-indigo-600"><Paperclip className="w-6 h-6" /></button>
+            <input 
+              placeholder={activeTab === 'CHAT' ? "Type your message..." : "Add an internal note..."}
+              className="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2"
+            />
+            <button className={cn(
+              "p-2 rounded-xl transition-all",
+              activeTab === 'CHAT' ? "bg-indigo-600 text-white shadow-lg" : "bg-amber-500 text-white shadow-lg"
+            )}>
+              <Send className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* CRM / Contact Info Sidebar (Desktop only) */}
-      <div className="hidden md:flex w-80 lg:w-96 flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-y-auto">
-        <header className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
-          <h2 className="font-bold text-slate-800 dark:text-white">Contact CRM</h2>
-          <button className="text-indigo-600 hover:text-indigo-700 text-sm font-medium">Edit</button>
+      {/* CRM Sidebar */}
+      <div className="hidden lg:flex w-96 flex-col bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 overflow-y-auto">
+        <header className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10 flex items-center justify-between">
+          <h3 className="font-bold text-sm uppercase tracking-widest text-slate-400">Lead CRM</h3>
+          <button className="text-xs font-bold text-indigo-600 hover:underline">View Full Profile</button>
         </header>
 
-        <div className="p-6 flex flex-col items-center border-b border-slate-200 dark:border-slate-800">
-          <img
-            src="https://i.pravatar.cc/150?u=customer1"
-            alt="John Doe"
-            className="w-24 h-24 rounded-full object-cover shadow-md mb-4"
-          />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">John Doe</h2>
-          <p className="text-slate-500 dark:text-slate-400 mb-2">+1 (555) 123-4567</p>
-          <div className="flex space-x-2 mt-2">
-            <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-600 hover:bg-indigo-100 transition-colors">
-              <Phone className="w-5 h-5" />
-            </button>
-            <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-600 hover:bg-indigo-100 transition-colors">
-              <Video className="w-5 h-5" />
-            </button>
-            <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-600 hover:bg-indigo-100 transition-colors">
-              <Search className="w-5 h-5" />
-            </button>
+        <div className="p-6 text-center border-b border-slate-100 dark:border-slate-800">
+          <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900 rounded-3xl flex items-center justify-center text-indigo-600 text-3xl font-bold mx-auto mb-4 shadow-xl shadow-indigo-600/10">
+            JD
+          </div>
+          <h2 className="text-xl font-bold">John Doe</h2>
+          <p className="text-sm text-slate-500">+1 234 567 890</p>
+          <div className="flex justify-center gap-2 mt-4">
+            <button className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-indigo-600"><Phone className="w-5 h-5" /></button>
+            <button className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-blue-600"><Video className="w-5 h-5" /></button>
+            <button className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-green-600"><ShoppingBag className="w-5 h-5" /></button>
           </div>
         </div>
 
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center">
-            <Tag className="w-4 h-4 mr-2" /> Labels
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500 text-xs font-semibold rounded-full flex items-center cursor-pointer hover:bg-yellow-200 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-yellow-500 mr-2"></div>
-              Hot Lead
-            </span>
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500 text-xs font-semibold rounded-full flex items-center cursor-pointer hover:bg-blue-200 transition-colors">
-              <div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>
-              Premium Interested
-            </span>
-            <span className="px-3 py-1 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-xs font-semibold rounded-full flex items-center cursor-pointer hover:bg-slate-200 transition-colors border border-dashed border-slate-300 dark:border-slate-600">
-              <PlusCircle className="w-3 h-3 mr-1" /> Add Label
-            </span>
-          </div>
-        </div>
+        <div className="p-6 space-y-8">
+          <section>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5" /> Pipeline Status
+            </h4>
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl flex items-center justify-between">
+              <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">INTERESTED</span>
+              <ChevronRight className="w-4 h-4 text-indigo-400" />
+            </div>
+          </section>
 
-        <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center">
-            <User className="w-4 h-4 mr-2" /> CRM Details
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">john.doe@company.com</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Company</p>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">Acme Corp Ltd.</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Lead Source</p>
-              <p className="text-sm font-medium text-slate-900 dark:text-white">Website Landing Page</p>
-            </div>
-          </div>
-        </div>
+          <section>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <BookOpen className="w-3.5 h-3.5" /> Requirement
+            </h4>
+            <p className="text-sm font-medium leading-relaxed">Looking for a premium messaging plan for a team of 50 agents with CRM integration.</p>
+          </section>
 
-        <div className="p-6">
-          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-4 flex items-center">
-            <Clock className="w-4 h-4 mr-2" /> Recent Activity
-          </h3>
-          <div className="relative border-l-2 border-slate-200 dark:border-slate-700 ml-3 space-y-6">
-            <div className="relative pl-6">
-              <div className="absolute w-4 h-4 bg-indigo-600 rounded-full border-4 border-white dark:border-slate-900 -left-[9px] top-1"></div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-white">Sent Pricing Document</p>
-              <p className="text-xs text-slate-500">Today, 10:36 AM</p>
+          <section>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Info className="w-3.5 h-3.5" /> Custom Labels
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-bold rounded-lg uppercase">Hot Lead</span>
+              <span className="px-3 py-1 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-lg uppercase">Tech Team</span>
+              <button className="px-3 py-1 border border-dashed border-slate-300 text-[10px] font-bold rounded-lg uppercase text-slate-400">+ Add</button>
             </div>
-            <div className="relative pl-6">
-              <div className="absolute w-4 h-4 bg-slate-300 dark:bg-slate-600 rounded-full border-4 border-white dark:border-slate-900 -left-[9px] top-1"></div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-white">Initial Contact</p>
-              <p className="text-xs text-slate-500">Today, 10:30 AM</p>
+          </section>
+
+          <section>
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" /> Activity
+            </h4>
+            <div className="space-y-4">
+              <div className="flex gap-3">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5" />
+                <div>
+                  <p className="text-xs font-bold">Chat Assigned to You</p>
+                  <p className="text-[10px] text-slate-500">Just now</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5" />
+                <div>
+                  <p className="text-xs font-bold">Lead Created</p>
+                  <p className="text-[10px] text-slate-500">Today, 10:30 AM</p>
+                </div>
+              </div>
             </div>
-            <div className="relative pl-6">
-              <div className="absolute w-4 h-4 bg-slate-300 dark:bg-slate-600 rounded-full border-4 border-white dark:border-slate-900 -left-[9px] top-1"></div>
-              <p className="text-sm font-semibold text-slate-800 dark:text-white">Added to CRM via WebForm</p>
-              <p className="text-xs text-slate-500">Yesterday, 4:45 PM</p>
-            </div>
-          </div>
-          
-          <button className="w-full mt-6 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 font-semibold rounded-lg transition-colors flex items-center justify-center">
-            <Clock className="w-4 h-4 mr-2" /> Add Follow-up Reminder
-          </button>
+          </section>
         </div>
       </div>
     </div>
