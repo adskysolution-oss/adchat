@@ -9,7 +9,7 @@ import {
   Plus, 
   MoreVertical,
   LogOut,
-  Chrome
+  Globe
 } from "lucide-react";
 
 export default function LinkedDevicesPage() {
@@ -19,7 +19,7 @@ export default function LinkedDevicesPage() {
       name: "Google Chrome (Windows)",
       location: "New York, USA",
       active: true,
-      icon: <Chrome className="w-6 h-6 text-indigo-500" />
+      icon: <Globe className="w-6 h-6 text-indigo-500" />
     },
     {
       id: 2,
@@ -64,7 +64,7 @@ export default function LinkedDevicesPage() {
                 <Monitor className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div className="w-16 h-16 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border-4 border-slate-50 dark:border-slate-900 opacity-60 scale-75">
-                <Chrome className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+                <Globe className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
               </div>
             </div>
             
