@@ -1,0 +1,452 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// 1. AUTHENTICATION & USER MODULE
+// ---------------------------------------------------------
+
+enum AccountType {
+  PERSONAL
+  BUSINESS
+}
+
+enum OnlineStatus {
+  ONLINE
+  OFFLINE
+  AWAY
+}
+
+model User {
+  id             String    @id @default(uuid())
+  phoneNumber    String    @unique
+  accountType    AccountType @default(PERSONAL)
+  
+  // Profile Info
+  firstName      String?
+  lastName       String?
+  about          String?   @default("Available")
+  profileImage   String?
+  
+  // Auth & Security
+  pinHash        String?   // For 2-step verification
+  isVerified     Boolean   @default(false) // Business verification
+  
+  // Status
+  onlineStatus   OnlineStatus @default(OFFLINE)
+  lastSeen       DateTime?
+  
+  // Settings
+  privacySettings Json?    // Stores Read receipts, Last seen visibility, etc.
+  powerSettings   Json?    // Stores Hide online, Freeze last seen, etc.
+  themeSettings   Json?
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  devices        Device[]
+  chats          ChatParticipant[]
+  messages       Message[]
+  businessProfile BusinessProfile?
+  contacts       Contact[] @relation("UserContacts")
+  contactsOf     Contact[] @relation("ContactedBy")
+  statusUpdates  StatusUpdate[]
+  calls          CallParticipant[]
+  blocks         Block[]   @relation("Blocker")
+  blockedBy      Block[]   @relation("BlockedUser")
+  
+  // Business Specific Relations
+  leads          Lead[]    @relation("AssignedAgent")
+}
+
+model Device {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  deviceType     String    // e.g., 'iOS', 'Android', 'Web', 'Desktop'
+  deviceId       String    @unique // Hardware/Client ID
+  pushToken      String?
+  publicKey      String?   // For E2E Encryption
+  lastActive     DateTime  @default(now())
+  isActive       Boolean   @default(true)
+  
+  createdAt      DateTime  @default(now())
+}
+
+model Contact {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation("UserContacts", fields: [userId], references: [id], onDelete: Cascade)
+  
+  contactId      String
+  contactUser    User      @relation("ContactedBy", fields: [contactId], references: [id], onDelete: Cascade)
+  
+  savedName      String?
+  isMuted        Boolean   @default(false)
+  isBlocked      Boolean   @default(false)
+  
+  createdAt      DateTime  @default(now())
+
+  @@unique([userId, contactId])
+}
+
+model Block {
+  id             String    @id @default(uuid())
+  blockerId      String
+  blocker        User      @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId      String
+  blockedUser    User      @relation("BlockedUser", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+
+// ---------------------------------------------------------
+// 2. CHAT & MESSAGING MODULE
+// ---------------------------------------------------------
+
+enum ChatType {
+  ONE_TO_ONE
+  GROUP
+  COMMUNITY
+  CHANNEL
+  SECRET
+}
+
+model Chat {
+  id             String    @id @default(uuid())
+  type           ChatType
+  
+  // Group/Channel Info
+  name           String?
+  description    String?
+  avatarUrl      String?
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  participants   ChatParticipant[]
+  messages       Message[]
+  
+  communityId    String?
+  community      Community? @relation(fields: [communityId], references: [id])
+}
+
+enum ParticipantRole {
+  ADMIN
+  MODERATOR
+  MEMBER
+  GUEST
+}
+
+model ChatParticipant {
+  id             String    @id @default(uuid())
+  chatId         String
+  chat           Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime  @default(now())
+  
+  unreadCount    Int       @default(0)
+  isMuted        Boolean   @default(false)
+  isArchived     Boolean   @default(false)
+  isPinned       Boolean   @default(false)
+
+  @@unique([chatId, userId])
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+  LOCATION
+  CONTACT
+  SYSTEM
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Message {
+  id             String    @id @default(uuid())
+  chatId         String
+  chat           Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  senderId       String
+  sender         User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  type           MessageType @default(TEXT)
+  content        String?   // Encrypted text content or media URL metadata
+  mediaUrl       String?
+  mediaSize      Int?
+  mediaMimeType  String?
+  
+  status         MessageStatus @default(SENT)
+  
+  replyToId      String?
+  replyTo        Message?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies        Message[] @relation("MessageReplies")
+  
+  isForwarded    Boolean   @default(false)
+  isDeleted      Boolean   @default(false) // Soft delete
+  isEdited       Boolean   @default(false)
+  
+  scheduledFor   DateTime? // For Message Scheduler
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  reactions      Reaction[]
+}
+
+model Reaction {
+  id             String    @id @default(uuid())
+  messageId      String
+  message        Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId         String    // We don't link directly to User to save foreign key checks if not needed, or we can.
+  emoji          String
+  createdAt      DateTime  @default(now())
+
+  @@unique([messageId, userId])
+}
+
+
+// ---------------------------------------------------------
+// 3. CALLS MODULE
+// ---------------------------------------------------------
+
+enum CallType {
+  VOICE
+  VIDEO
+}
+
+enum CallStatus {
+  ONGOING
+  COMPLETED
+  MISSED
+  REJECTED
+}
+
+model Call {
+  id             String    @id @default(uuid())
+  type           CallType
+  status         CallStatus
+  startTime      DateTime  @default(now())
+  endTime        DateTime?
+  
+  participants   CallParticipant[]
+}
+
+model CallParticipant {
+  id             String    @id @default(uuid())
+  callId         String
+  call           Call      @relation(fields: [callId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  joinedAt       DateTime?
+  leftAt         DateTime?
+  duration       Int?      // in seconds
+}
+
+
+// ---------------------------------------------------------
+// 4. STATUS / STORIES MODULE
+// ---------------------------------------------------------
+
+model StatusUpdate {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type           MessageType
+  mediaUrl       String?
+  caption        String?
+  backgroundColor String?  // For text status
+  
+  expiresAt      DateTime
+  createdAt      DateTime  @default(now())
+  
+  views          StatusView[]
+}
+
+model StatusView {
+  id             String    @id @default(uuid())
+  statusId       String
+  status         StatusUpdate @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  viewerId       String
+  viewedAt       DateTime  @default(now())
+
+  @@unique([statusId, viewerId])
+}
+
+
+// ---------------------------------------------------------
+// 5. COMMUNITIES MODULE
+// ---------------------------------------------------------
+
+model Community {
+  id             String    @id @default(uuid())
+  name           String
+  description    String?
+  avatarUrl      String?
+  
+  createdAt      DateTime  @default(now())
+  
+  groups         Chat[]    // Sub-groups within the community
+}
+
+
+// ---------------------------------------------------------
+// 6. BUSINESS MODULE & CRM
+// ---------------------------------------------------------
+
+model BusinessProfile {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  businessName   String
+  category       String?
+  email          String?
+  website        String?
+  address        String?
+  workingHours   Json?
+  
+  greetingMessage String?
+  awayMessage    String?
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  products       Product[]
+  labels         Label[]
+  quickReplies   QuickReply[]
+  leads          Lead[]
+  campaigns      Campaign[]
+}
+
+model Product {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name           String
+  description    String?
+  price          Float?
+  currency       String    @default("USD")
+  imageUrl       String?
+  link           String?
+  sku            String?
+  isHidden       Boolean   @default(false)
+  
+  createdAt      DateTime  @default(now())
+}
+
+model Label {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name           String
+  color          String    // Hex code
+  
+  leads          Lead[]    @relation("LeadLabels")
+}
+
+model QuickReply {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  shortcut       String    // e.g., /pricing
+  message        String
+  mediaUrl       String?
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+model Lead {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name           String
+  phoneNumber    String?
+  email          String?
+  company        String?
+  
+  status         LeadStatus @default(NEW)
+  value          Float?
+  source         String?
+  notes          String?
+  
+  assignedToId   String?
+  assignedTo     User?     @relation("AssignedAgent", fields: [assignedToId], references: [id])
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  labels         Label[]   @relation("LeadLabels")
+}
+
+model Campaign {
+  id             String    @id @default(uuid())
+  businessId     String
+  business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  name           String
+  messageContent String
+  mediaUrl       String?
+  
+  status         String    // DRAFT, SCHEDULED, ACTIVE, COMPLETED
+  scheduledFor   DateTime?
+  
+  // Analytics
+  sentCount      Int       @default(0)
+  deliveredCount Int       @default(0)
+  readCount      Int       @default(0)
+  repliedCount   Int       @default(0)
+  
+  createdAt      DateTime  @default(now())
+}
+
+// ---------------------------------------------------------
+// 7. POWER USER MODULE (Auto Replies)
+// ---------------------------------------------------------
+
+model AutoReplyRule {
+  id             String    @id @default(uuid())
+  userId         String    // Link to User
+  
+  name           String
+  message        String
+  isActive       Boolean   @default(true)
+  targetAudience String    // ALL, CONTACTS, NON_CONTACTS
+  exceptGroups   Boolean   @default(true)
+  scheduleTime   String?   // CRON or time range
+  
+  createdAt      DateTime  @default(now())
+}
