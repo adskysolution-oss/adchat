@@ -17,6 +17,12 @@ import {
   Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSocket } from "@/lib/socket";
+
+// Mock user for demo purposes
+const CURRENT_USER_ID = "user_me_123";
+const TARGET_USER_ID = "user_aman_456";
+const CHAT_ID = "chat_demo_789";
 
 const MOCK_MESSAGES = [
   { id: 1, text: "Hey! Did you see the new design for Sky Verse?", sender: "other", time: "10:15 AM", status: "read" },
@@ -30,26 +36,106 @@ const MOCK_MESSAGES = [
 export default function ChatScreen() {
   const [messages, setMessages] = useState(MOCK_MESSAGES);
   const [inputValue, setInputValue] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const socket = getSocket(CURRENT_USER_ID);
+
+    // Join the specific chat room
+    socket.emit("join_chat", { chatId: CHAT_ID });
+
+    // Listen for new messages
+    socket.on("receive_message", (message) => {
+      const formattedMessage = {
+        id: message.id,
+        text: message.content,
+        sender: message.senderId === CURRENT_USER_ID ? "me" : "other",
+        time: new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: "delivered",
+        type: message.type === 'IMAGE' ? 'image' : 'text',
+        src: message.mediaUrl
+      };
+      setMessages((prev) => [...prev, formattedMessage]);
+      
+      // If it's from the other person, send "read" receipt
+      if (message.senderId !== CURRENT_USER_ID) {
+        socket.emit("message_read", { messageId: message.id, chatId: CHAT_ID, userId: CURRENT_USER_ID });
+      }
+    });
+
+    // Listen for typing events
+    socket.on("typing_start", (data) => {
+      if (data.userId !== CURRENT_USER_ID) setIsTyping(true);
+    });
+
+    socket.on("typing_stop", (data) => {
+      if (data.userId !== CURRENT_USER_ID) setIsTyping(false);
+    });
+
+    // Listen for status updates
+    socket.on("user_online", (data) => {
+      if (data.userId === TARGET_USER_ID) setIsOnline(true);
+    });
+
+    socket.on("user_offline", (data) => {
+      if (data.userId === TARGET_USER_ID) setIsOnline(false);
+    });
+
+    return () => {
+      socket.off("receive_message");
+      socket.off("typing_start");
+      socket.off("typing_stop");
+      socket.off("user_online");
+      socket.off("user_offline");
+    };
+  }, []);
 
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
-    const newMessage = {
-      id: Date.now(),
-      text: inputValue,
-      sender: "me",
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: "sent"
+    
+    const socket = getSocket(CURRENT_USER_ID);
+    
+    const payload = {
+      chatId: CHAT_ID,
+      senderId: CURRENT_USER_ID,
+      type: "TEXT",
+      content: inputValue,
     };
-    setMessages([...messages, newMessage]);
+
+    // Emit to backend
+    socket.emit("send_message", payload);
+    
+    // Stop typing indicator
+    handleStopTyping();
     setInputValue("");
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputValue(e.target.value);
+    
+    const socket = getSocket(CURRENT_USER_ID);
+    socket.emit("typing_start", { chatId: CHAT_ID, userId: CURRENT_USER_ID });
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
+    typingTimeoutRef.current = setTimeout(() => {
+      handleStopTyping();
+    }, 2000);
+  };
+
+  const handleStopTyping = () => {
+    const socket = getSocket(CURRENT_USER_ID);
+    socket.emit("typing_stop", { chatId: CHAT_ID, userId: CURRENT_USER_ID });
   };
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
   return (
     <div className="flex flex-col h-screen bg-[#f1f5f9] dark:bg-[#020617] max-w-md mx-auto relative shadow-2xl overflow-hidden">
@@ -61,11 +147,17 @@ export default function ChatScreen() {
           </button>
           <div className="relative">
             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aman" className="w-10 h-10 rounded-xl bg-surface dark:bg-surface-dark border border-border/50" />
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />
+            {isOnline && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full" />}
           </div>
           <div>
             <h3 className="font-bold text-sm text-foreground">Aman Sharma</h3>
-            <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">Online</p>
+            {isTyping ? (
+              <p className="text-[10px] text-primary font-bold uppercase tracking-wider animate-pulse">Typing...</p>
+            ) : (
+              <p className={cn("text-[10px] font-bold uppercase tracking-wider", isOnline ? "text-green-500" : "text-foreground/30")}>
+                {isOnline ? "Online" : "Offline"}
+              </p>
+            )}
           </div>
         </div>
 
@@ -132,6 +224,19 @@ export default function ChatScreen() {
               </div>
             </motion.div>
           ))}
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start"
+            >
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-2xl rounded-tl-none border border-border/50 flex gap-1 items-center shadow-sm">
+                <span className="w-1.5 h-1.5 bg-foreground/20 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-foreground/20 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-foreground/20 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -144,7 +249,7 @@ export default function ChatScreen() {
             </button>
             <textarea
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleTyping}
               placeholder="Type a message..."
               rows={1}
               className="flex-1 bg-transparent border-none outline-none resize-none py-2.5 px-2 text-sm max-h-32 no-scrollbar"

@@ -35,15 +35,15 @@ model User {
   
   // Auth & Security
   pinHash        String?   // For 2-step verification
-  isVerified     Boolean   @default(false) // Business verification
+  isVerified     Boolean   @default(false)
   
   // Status
   onlineStatus   OnlineStatus @default(OFFLINE)
   lastSeen       DateTime?
   
-  // Settings
-  privacySettings Json?    // Stores Read receipts, Last seen visibility, etc.
-  powerSettings   Json?    // Stores Hide online, Freeze last seen, etc.
+  // Settings (Power User & Privacy)
+  privacySettings Json?    
+  powerSettings   Json?    
   themeSettings   Json?
 
   createdAt      DateTime  @default(now())
@@ -61,8 +61,26 @@ model User {
   blocks         Block[]   @relation("Blocker")
   blockedBy      Block[]   @relation("BlockedUser")
   
+  // New features
+  starredMessages StarredMessage[]
+  messageEdits    MessageEdit[]
+  reactions       Reaction[]
+  
   // Business Specific Relations
-  leads          Lead[]    @relation("AssignedAgent")
+  assignedLeads     Lead[]    @relation("AssignedAgent")
+  assignedChats     BusinessChatAssignment[]
+  internalNotes     InternalNote[]
+
+  // Step 4 Relations
+  statusReactions   StatusReaction[]
+  statusReplies     StatusReply[]
+  statusViews       StatusView[]
+  channelMemberships ChannelMember[]
+  communityMemberships CommunityMember[]
+  ownedChannels     Channel[] @relation("ChannelOwner")
+  ownedCommunities  Community[] @relation("CommunityOwner")
+  broadcastLists    BroadcastList[]
+  channelReports    ChannelReport[]
 }
 
 model Device {
@@ -70,10 +88,10 @@ model Device {
   userId         String
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  deviceType     String    // e.g., 'iOS', 'Android', 'Web', 'Desktop'
-  deviceId       String    @unique // Hardware/Client ID
+  deviceType     String    
+  deviceId       String    @unique 
   pushToken      String?
-  publicKey      String?   // For E2E Encryption
+  publicKey      String?   
   lastActive     DateTime  @default(now())
   isActive       Boolean   @default(true)
   
@@ -129,6 +147,8 @@ model Chat {
   name           String?
   description    String?
   avatarUrl      String?
+  inviteLink     String?   @unique
+  adminOnlyMode  Boolean   @default(false)
   
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -138,6 +158,10 @@ model Chat {
   
   communityId    String?
   community      Community? @relation(fields: [communityId], references: [id])
+
+  assignments    BusinessChatAssignment[]
+  internalNotes  InternalNote[]
+  pinnedMessages PinnedMessage[]
 }
 
 enum ParticipantRole {
@@ -161,6 +185,9 @@ model ChatParticipant {
   isMuted        Boolean   @default(false)
   isArchived     Boolean   @default(false)
   isPinned       Boolean   @default(false)
+  
+  customWallpaper String?
+  customNotification String?
 
   @@unique([chatId, userId])
 }
@@ -174,9 +201,13 @@ enum MessageType {
   LOCATION
   CONTACT
   SYSTEM
+  LINK
+  PRODUCT
+  OFFER
 }
 
 enum MessageStatus {
+  SENDING
   SENT
   DELIVERED
   READ
@@ -192,10 +223,11 @@ model Message {
   sender         User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
   
   type           MessageType @default(TEXT)
-  content        String?   // Encrypted text content or media URL metadata
+  content        String?   
   mediaUrl       String?
   mediaSize      Int?
   mediaMimeType  String?
+  mediaThumbnail String?   // For preview
   
   status         MessageStatus @default(SENT)
   
@@ -204,7 +236,9 @@ model Message {
   replies        Message[] @relation("MessageReplies")
   
   isForwarded    Boolean   @default(false)
-  isDeleted      Boolean   @default(false) // Soft delete
+  isDeleted      Boolean   @default(false) // Soft delete (everyone)
+  deletedFor     String[]  // Array of User IDs who deleted for themselves
+  
   isEdited       Boolean   @default(false)
   
   scheduledFor   DateTime? // For Message Scheduler
@@ -213,17 +247,57 @@ model Message {
   updatedAt      DateTime  @updatedAt
 
   reactions      Reaction[]
+  edits          MessageEdit[]
+  starrers       StarredMessage[]
+  pinnedIn       PinnedMessage[]
+}
+
+model MessageEdit {
+  id             String    @id @default(uuid())
+  messageId      String
+  message        Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  editorId       String
+  editor         User      @relation(fields: [editorId], references: [id], onDelete: Cascade)
+  
+  oldContent     String?
+  newContent     String?
+  
+  editedAt       DateTime  @default(now())
 }
 
 model Reaction {
   id             String    @id @default(uuid())
   messageId      String
   message        Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  userId         String    // We don't link directly to User to save foreign key checks if not needed, or we can.
+  userId         String    
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   emoji          String
   createdAt      DateTime  @default(now())
 
   @@unique([messageId, userId])
+}
+
+model StarredMessage {
+  id             String    @id @default(uuid())
+  messageId      String
+  message        Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime  @default(now())
+
+  @@unique([messageId, userId])
+}
+
+model PinnedMessage {
+  id             String    @id @default(uuid())
+  chatId         String
+  chat           Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  messageId      String
+  message        Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  pinnedById     String
+  createdAt      DateTime  @default(now())
+
+  @@unique([chatId, messageId])
 }
 
 
@@ -231,59 +305,61 @@ model Reaction {
 // 3. CALLS MODULE
 // ---------------------------------------------------------
 
-enum CallType {
-  VOICE
-  VIDEO
-}
-
-enum CallStatus {
-  ONGOING
-  COMPLETED
-  MISSED
-  REJECTED
-}
-
 model Call {
   id             String    @id @default(uuid())
-  type           CallType
-  status         CallStatus
+  type           String
+  status         String
   startTime      DateTime  @default(now())
   endTime        DateTime?
-  
   participants   CallParticipant[]
 }
-
 model CallParticipant {
   id             String    @id @default(uuid())
   callId         String
   call           Call      @relation(fields: [callId], references: [id], onDelete: Cascade)
   userId         String
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
   joinedAt       DateTime?
   leftAt         DateTime?
-  duration       Int?      // in seconds
+  duration       Int?      
 }
-
 
 // ---------------------------------------------------------
 // 4. STATUS / STORIES MODULE
 // ---------------------------------------------------------
 
+enum StatusPrivacyType {
+  EVERYONE
+  CONTACTS
+  SELECTED_CONTACTS
+  EXCLUDED_CONTACTS
+}
+
 model StatusUpdate {
-  id             String    @id @default(uuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  type           MessageType
-  mediaUrl       String?
-  caption        String?
-  backgroundColor String?  // For text status
+  type            MessageType
+  mediaUrl        String?
+  caption         String?
+  backgroundColor String?  
+  linkUrl         String?   // For Link status
+  productId       String?   // For Product promotion status
+  offerDetails    String?   // For Offer status
   
-  expiresAt      DateTime
-  createdAt      DateTime  @default(now())
+  privacyType     StatusPrivacyType @default(EVERYONE)
+  privacyUsers    String[]  // IDs of users for SELECTED/EXCLUDED
   
-  views          StatusView[]
+  expiresAt       DateTime
+  scheduledAt     DateTime? // For scheduled status
+  isArchived      Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  
+  views           StatusView[]
+  reactions       StatusReaction[]
+  replies         StatusReply[]
 }
 
 model StatusView {
@@ -291,14 +367,123 @@ model StatusView {
   statusId       String
   status         StatusUpdate @relation(fields: [statusId], references: [id], onDelete: Cascade)
   viewerId       String
+  viewer         User      @relation(fields: [viewerId], references: [id], onDelete: Cascade)
   viewedAt       DateTime  @default(now())
+  isSecretView   Boolean   @default(false)
 
   @@unique([statusId, viewerId])
 }
 
+model StatusReaction {
+  id             String    @id @default(uuid())
+  statusId       String
+  status         StatusUpdate @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji          String
+  createdAt      DateTime  @default(now())
+
+  @@unique([statusId, userId])
+}
+
+model StatusReply {
+  id             String    @id @default(uuid())
+  statusId       String
+  status         StatusUpdate @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message        String
+  createdAt      DateTime  @default(now())
+}
 
 // ---------------------------------------------------------
-// 5. COMMUNITIES MODULE
+// 5. CHANNELS MODULE
+// ---------------------------------------------------------
+
+model Channel {
+  id             String    @id @default(uuid())
+  name           String
+  description    String?
+  iconUrl        String?
+  isPublic       Boolean   @default(true)
+  isVerified     Boolean   @default(false)
+  category       String?
+  
+  ownerId        String
+  owner          User      @relation("ChannelOwner", fields: [ownerId], references: [id])
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  members        ChannelMember[]
+  posts          ChannelPost[]
+  reports        ChannelReport[]
+}
+
+model ChannelMember {
+  id             String    @id @default(uuid())
+  channelId      String
+  channel        Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime  @default(now())
+
+  @@unique([channelId, userId])
+}
+
+model ChannelPost {
+  id             String    @id @default(uuid())
+  channelId      String
+  channel        Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
+  type           MessageType
+  content        String?
+  mediaUrl       String?
+  mediaSize      Int?
+  mediaMimeType  String?
+  
+  viewCount      Int       @default(0)
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  reactions      ChannelPostReaction[]
+  replies        ChannelPostReply[]
+}
+
+model ChannelPostReaction {
+  id             String    @id @default(uuid())
+  postId         String
+  post           ChannelPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId         String
+  emoji          String
+  createdAt      DateTime  @default(now())
+
+  @@unique([postId, userId])
+}
+
+model ChannelPostReply {
+  id             String    @id @default(uuid())
+  postId         String
+  post           ChannelPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId         String
+  message        String
+  createdAt      DateTime  @default(now())
+}
+
+model ChannelReport {
+  id             String    @id @default(uuid())
+  channelId      String
+  channel        Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  reporterId     String
+  reporter       User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason         String
+  createdAt      DateTime  @default(now())
+}
+
+// ---------------------------------------------------------
+// 6. COMMUNITIES MODULE
 // ---------------------------------------------------------
 
 model Community {
@@ -306,15 +491,102 @@ model Community {
   name           String
   description    String?
   avatarUrl      String?
+  isPublic       Boolean   @default(true)
+  rules          String?
+  
+  ownerId        String
+  owner          User      @relation("CommunityOwner", fields: [ownerId], references: [id])
   
   createdAt      DateTime  @default(now())
-  
-  groups         Chat[]    // Sub-groups within the community
+  updatedAt      DateTime  @updatedAt
+
+  members        CommunityMember[]
+  groups         Chat[]    
+  invites        CommunityInvite[]
 }
 
+model CommunityMember {
+  id             String    @id @default(uuid())
+  communityId    String
+  community      Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           ParticipantRole @default(MEMBER)
+  isApproved     Boolean   @default(false)
+  joinedAt       DateTime  @default(now())
+
+  @@unique([communityId, userId])
+}
+
+model CommunityInvite {
+  id             String    @id @default(uuid())
+  communityId    String
+  community      Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  inviteCode     String    @unique
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+}
 
 // ---------------------------------------------------------
-// 6. BUSINESS MODULE & CRM
+// 7. BROADCAST MODULE
+// ---------------------------------------------------------
+
+model BroadcastList {
+  id             String    @id @default(uuid())
+  name           String
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  recipients     BroadcastRecipient[]
+  messages       BroadcastMessage[]
+}
+
+model BroadcastRecipient {
+  id              String    @id @default(uuid())
+  broadcastListId String
+  broadcastList   BroadcastList @relation(fields: [broadcastListId], references: [id], onDelete: Cascade)
+  userId          String
+  hasConsent      Boolean   @default(true)
+  joinedAt        DateTime  @default(now())
+
+  @@unique([broadcastListId, userId])
+}
+
+model BroadcastMessage {
+  id              String    @id @default(uuid())
+  broadcastListId String
+  broadcastList   BroadcastList @relation(fields: [broadcastListId], references: [id], onDelete: Cascade)
+  
+  type            MessageType
+  content         String?
+  mediaUrl        String?
+  
+  scheduledAt     DateTime?
+  
+  createdAt       DateTime  @default(now())
+
+  reports         BroadcastReport[]
+}
+
+model BroadcastReport {
+  id                 String    @id @default(uuid())
+  broadcastMessageId String
+  broadcastMessage   BroadcastMessage @relation(fields: [broadcastMessageId], references: [id], onDelete: Cascade)
+  recipientId        String
+  
+  status             MessageStatus @default(SENT)
+  deliveredAt        DateTime?
+  readAt             DateTime?
+  repliedAt          DateTime?
+  
+  createdAt          DateTime  @default(now())
+}
+
+// ---------------------------------------------------------
+// 8. BUSINESS MODULE & CRM
 // ---------------------------------------------------------
 
 model BusinessProfile {
@@ -342,11 +614,30 @@ model BusinessProfile {
   campaigns      Campaign[]
 }
 
+model BusinessChatAssignment {
+  id             String    @id @default(uuid())
+  chatId         String
+  chat           Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          User      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  assignedAt     DateTime  @default(now())
+  status         String    @default("ACTIVE") // ACTIVE, TRANSFERRED, RESOLVED
+}
+
+model InternalNote {
+  id             String    @id @default(uuid())
+  chatId         String
+  chat           Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          User      @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  content        String
+  createdAt      DateTime  @default(now())
+}
+
 model Product {
   id             String    @id @default(uuid())
   businessId     String
   business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
   name           String
   description    String?
   price          Float?
@@ -355,7 +646,6 @@ model Product {
   link           String?
   sku            String?
   isHidden       Boolean   @default(false)
-  
   createdAt      DateTime  @default(now())
 }
 
@@ -363,10 +653,8 @@ model Label {
   id             String    @id @default(uuid())
   businessId     String
   business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
   name           String
-  color          String    // Hex code
-  
+  color          String    
   leads          Lead[]    @relation("LeadLabels")
 }
 
@@ -374,8 +662,7 @@ model QuickReply {
   id             String    @id @default(uuid())
   businessId     String
   business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
-  shortcut       String    // e.g., /pricing
+  shortcut       String    
   message        String
   mediaUrl       String?
 }
@@ -392,23 +679,18 @@ model Lead {
   id             String    @id @default(uuid())
   businessId     String
   business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
   name           String
   phoneNumber    String?
   email          String?
   company        String?
-  
   status         LeadStatus @default(NEW)
   value          Float?
   source         String?
   notes          String?
-  
   assignedToId   String?
   assignedTo     User?     @relation("AssignedAgent", fields: [assignedToId], references: [id])
-  
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-
   labels         Label[]   @relation("LeadLabels")
 }
 
@@ -416,37 +698,30 @@ model Campaign {
   id             String    @id @default(uuid())
   businessId     String
   business       BusinessProfile @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  
   name           String
   messageContent String
   mediaUrl       String?
-  
-  status         String    // DRAFT, SCHEDULED, ACTIVE, COMPLETED
+  status         String    
   scheduledFor   DateTime?
-  
-  // Analytics
   sentCount      Int       @default(0)
   deliveredCount Int       @default(0)
   readCount      Int       @default(0)
   repliedCount   Int       @default(0)
-  
   createdAt      DateTime  @default(now())
 }
 
 // ---------------------------------------------------------
-// 7. POWER USER MODULE (Auto Replies)
+// 9. POWER USER MODULE (Auto Replies)
 // ---------------------------------------------------------
 
 model AutoReplyRule {
   id             String    @id @default(uuid())
-  userId         String    // Link to User
-  
+  userId         String    
   name           String
   message        String
   isActive       Boolean   @default(true)
   targetAudience String    // ALL, CONTACTS, NON_CONTACTS
   exceptGroups   Boolean   @default(true)
-  scheduleTime   String?   // CRON or time range
-  
+  scheduleTime   String?   
   createdAt      DateTime  @default(now())
 }
